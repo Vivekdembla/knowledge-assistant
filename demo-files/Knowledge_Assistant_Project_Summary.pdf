@@ -1,0 +1,176 @@
+%PDF-1.4
+% Knowledge Assistant project summary
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 4370 >>
+stream
+0.13 0.39 0.31 rg
+BT /F2 9 Tf 56 753 Td (KNOWLEDGE ASSISTANT  /  PROJECT CASE STUDY) Tj ET
+0 0 0 rg
+0.09 0.24 0.2 rg
+BT /F2 25 Tf 56 725 Td (Knowledge Assistant) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 688.75 Td (A searchable, growing memory for documents and notes) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 663.75 Td (The problem) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 643.45 Td (Useful knowledge is easy to lose across PDFs, personal notes, and project records. A) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 629.45 Td (one-time document chat can answer questions about a file in front of you, but it does not) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 615.45 Td (provide a practical way to build a reusable collection of knowledge and return to it later.) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 590.45 Td (The solution) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 570.1500000000001 Td (Knowledge Assistant lets a user upload PDFs and save titled notes, then ask questions) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 556.1500000000001 Td (across that stored material. It retrieves a limited set of relevant passages and generates) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 542.1500000000001 Td (an answer grounded in those passages. The response includes source citations so the user) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 528.1500000000001 Td (can check where supporting information came from.) Tj ET
+0.93 0.96 0.94 rg 48 484.1500000000001 508 46 re f
+0.13 0.39 0.31 RG 48 484.1500000000001 m 48 524.1500000000001 l S
+0.09 0.24 0.2 rg
+BT /F1 10 Tf 56 508.1500000000001 Td (Core idea: Save useful information once, add to it over time, and retrieve it) Tj ET
+0.09 0.24 0.2 rg
+BT /F1 10 Tf 56 493.1500000000001 Td (later when a question makes that knowledge relevant.) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 463.1500000000001 Td (How it works) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 442.8500000000001 Td (- Collect: Upload a PDF or save a note with a title and content.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 425.8500000000001 Td (- Prepare: Extract PDF text while preserving page references; split document and note text) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 411.8500000000001 Td (into smaller chunks.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 394.8500000000001 Td (- Index: Generate embeddings for chunks and store them in PostgreSQL with pgvector.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 377.8500000000001 Td (- Retrieve: Embed the user question, search document and note chunks by vector similarity,) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 363.8500000000001 Td (and select the most relevant evidence.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 346.8500000000001 Td (- Answer: Send the question and selected passages to Gemini, with instructions to answer) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 332.8500000000001 Td (from the supplied sources and cite them.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 315.8500000000001 Td (- Verify: Review the answer's source labels and excerpts to trace claims back to a PDF page) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 301.8500000000001 Td (or saved note.) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 276.8500000000001 Td (Architecture) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 256.55000000000007 Td (Web interface: Next.js and TypeScript for PDF upload, note saving, question entry, answers,) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 242.55000000000007 Td (and citations.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 225.55000000000007 Td (API: FastAPI handles document and note endpoints, processing status, and question) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 211.55000000000007 Td (answering.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 194.55000000000007 Td (Storage and search: PostgreSQL stores documents, notes, chunks, and metadata. pgvector) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 180.55000000000007 Td (supports similarity search over embeddings.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 163.55000000000007 Td (AI services: Google Gemini creates embeddings and generates answers from retrieved) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 149.55000000000007 Td (evidence.) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 124.55000000000007 Td (Example: interview preparation over time) Tj ET
+0.82 0.87 0.84 RG 56 43 m 556 43 l S
+0.35 0.4 0.37 rg BT /F1 8 Tf 56 29 Td (Project overview - sample demo document) Tj ET
+BT /F1 8 Tf 535 29 Td (1) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 3269 >>
+stream
+0.13 0.39 0.31 rg
+BT /F2 9 Tf 56 753 Td (KNOWLEDGE ASSISTANT  /  PROJECT CASE STUDY) Tj ET
+0 0 0 rg
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 734 Td (A user saves a recruiter email as a note, uploads a job description and resume, and adds a) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 720 Td (project summary PDF. Later, they ask: "Using the interview details in my note, the role) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 706 Td (requirements, and my project summary, what should I prepare to discuss?") Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 689 Td (The system can retrieve relevant passages from the email note and PDFs, connect the) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 675 Td (information in one response, and cite the supporting sources. The same pattern applies to) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 661 Td (project research, learning materials, meeting notes, and technical references.) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 636 Td (Grounding and privacy considerations) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 615.7 Td (- Answers are instructed to rely only on the retrieved passages and to say when the saved) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 601.7 Td (material does not contain enough information.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 584.7 Td (- Retrieved source text is treated as untrusted content, not as instructions to the model.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 567.7 Td (- Citations make it easier to inspect the evidence, but they do not guarantee that every) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 553.7 Td (answer is correct or complete.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 536.7 Td (- Users should avoid uploading sensitive information unless the deployment's access) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 522.7 Td (controls, retention, and data handling are appropriate for it.) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 505.70000000000005 Td (- For a public demo, use fictional or redacted emails and remove personal details from) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 491.70000000000005 Td (sample documents.) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 466.70000000000005 Td (Current scope and next steps) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 446.40000000000003 Td (The current application supports PDF and note ingestion, background embedding tasks,) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 432.40000000000003 Td (semantic retrieval across both source types, and cited question answering. Embedding tasks) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 418.40000000000003 Td (run as FastAPI in-process background tasks, so a process restart can interrupt work. A) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 404.40000000000003 Td (durable job queue, database migrations, authentication, and production-grade access) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 390.40000000000003 Td (controls are potential next steps, not features claimed as complete.) Tj ET
+0.13 0.39 0.31 rg
+BT /F2 14 Tf 56 365.40000000000003 Td (Technology) Tj ET
+0.13 0.16 0.14 rg
+BT /F1 10 Tf 56 345.1 Td (Python, FastAPI, SQLAlchemy, PostgreSQL, pgvector, Google Gemini, Next.js, and TypeScript.) Tj ET
+0.82 0.87 0.84 RG 56 43 m 556 43 l S
+0.35 0.4 0.37 rg BT /F1 8 Tf 56 29 Td (Project overview - sample demo document) Tj ET
+BT /F1 8 Tf 535 29 Td (2) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000047 00000 n 
+0000000096 00000 n 
+0000000159 00000 n 
+0000000256 00000 n 
+0000000358 00000 n 
+0000004780 00000 n 
+0000004916 00000 n 
+0000008237 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+8373
+%%EOF

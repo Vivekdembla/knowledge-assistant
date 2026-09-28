@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Knowledge Assistant | Project Summary</title>
+<style>
+@page { size: letter; margin: 0.7in; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; color: #202820; font-size: 10.5pt; line-height: 1.48; }
+header { border-bottom: 3px solid #25745c; padding-bottom: 13px; margin-bottom: 22px; }
+.kicker { color: #25745c; text-transform: uppercase; font-size: 8pt; font-weight: bold; letter-spacing: 1.1px; }
+h1 { font-size: 28pt; line-height: 1.05; margin: 8px 0; color: #173d32; }
+.subtitle { color: #53645d; font-size: 12pt; margin: 0; }
+h2 { color: #21634f; font-size: 15pt; margin: 22px 0 7px; page-break-after: avoid; }
+h3 { color: #273a32; font-size: 11pt; margin: 13px 0 4px; page-break-after: avoid; }
+p { margin: 5px 0 9px; }
+ul, ol { margin: 5px 0 10px; padding-left: 20px; }
+li { margin: 3px 0; }
+.callout { background: #edf5f0; border-left: 4px solid #25745c; padding: 10px 13px; margin: 12px 0; }
+.grid { width: 100%; border-collapse: collapse; margin: 8px 0 13px; }
+.grid td { border: 1px solid #d5dfd9; padding: 7px 9px; vertical-align: top; }
+.grid td:first-child { width: 25%; font-weight: bold; color: #21634f; }
+.small { font-size: 9pt; color: #53645d; }
+footer { border-top: 1px solid #d5dfd9; margin-top: 25px; padding-top: 7px; font-size: 8pt; color: #617168; }
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">Project case study</div>
+  <h1>Knowledge Assistant</h1>
+  <p class="subtitle">A searchable, growing memory for documents and notes</p>
+</header>
+
+<h2>The problem</h2>
+<p>Useful knowledge is easy to lose across PDFs, personal notes, and project records. A one-time document chat can answer questions about a file in front of you, but it does not provide a practical way to build a reusable collection of knowledge and return to it later.</p>
+
+<h2>The solution</h2>
+<p>Knowledge Assistant lets a user upload PDFs and save titled notes, then ask questions across that stored material. It retrieves a limited set of relevant passages and generates an answer grounded in those passages. The response includes source citations so the user can check where supporting information came from.</p>
+<div class="callout"><strong>Core idea:</strong> Save useful information once, add to it over time, and retrieve it later when a question makes that knowledge relevant.</div>
+
+<h2>How it works</h2>
+<ol>
+  <li><strong>Collect:</strong> Upload a PDF or save a note with a title and content.</li>
+  <li><strong>Prepare:</strong> Extract PDF text while preserving page references; split document and note text into smaller chunks.</li>
+  <li><strong>Index:</strong> Generate embeddings for chunks and store them in PostgreSQL with pgvector.</li>
+  <li><strong>Retrieve:</strong> Embed the user question, search document and note chunks by vector similarity, and select the most relevant evidence.</li>
+  <li><strong>Answer:</strong> Send the question and selected passages to Gemini, with instructions to answer from the supplied sources and cite them.</li>
+  <li><strong>Verify:</strong> Review the answer's source labels and excerpts to trace claims back to a PDF page or saved note.</li>
+</ol>
+
+<h2>Architecture</h2>
+<table class="grid">
+<tr><td>Web interface</td><td>Next.js and TypeScript for PDF upload, note saving, question entry, answers, and citations.</td></tr>
+<tr><td>API</td><td>FastAPI handles document and note endpoints, processing status, and question answering.</td></tr>
+<tr><td>Storage and search</td><td>PostgreSQL stores documents, notes, chunks, and metadata. pgvector supports similarity search over embeddings.</td></tr>
+<tr><td>AI services</td><td>Google Gemini creates embeddings and generates answers from retrieved evidence.</td></tr>
+</table>
+
+<h2>Example: interview preparation over time</h2>
+<p>A user saves a recruiter email as a note, uploads a job description and resume, and adds a project summary PDF. Later, they ask: <em>“Using the interview details in my note, the role requirements, and my project summary, what should I prepare to discuss?”</em></p>
+<p>The system can retrieve relevant passages from the email note and PDFs, connect the information in one response, and cite the supporting sources. The same pattern applies to project research, learning materials, meeting notes, and technical references.</p>
+
+<h2>Grounding and privacy considerations</h2>
+<ul>
+  <li>Answers are instructed to rely only on the retrieved passages and to say when the saved material does not contain enough information.</li>
+  <li>Retrieved source text is treated as untrusted content, not as instructions to the model.</li>
+  <li>Citations make it easier to inspect the evidence, but they do not guarantee that every answer is correct or complete.</li>
+  <li>Users should avoid uploading sensitive information unless the deployment's access controls, retention, and data handling are appropriate for it.</li>
+  <li>For a public demo, use fictional or redacted emails and remove personal details from sample documents.</li>
+</ul>
+
+<h2>Current scope and next steps</h2>
+<p>The current application supports PDF and note ingestion, background embedding tasks, semantic retrieval across both source types, and cited question answering. Embedding tasks run as FastAPI in-process background tasks, so a process restart can interrupt work. A durable job queue, database migrations, authentication, and production-grade access controls are potential next steps, not features claimed as complete.</p>
+
+<h2>Technology</h2>
+<p>Python, FastAPI, SQLAlchemy, PostgreSQL, pgvector, Google Gemini, Next.js, and TypeScript.</p>
+
+<footer>Prepared as a sample project overview for a knowledge-base demo. Describes implemented behavior and distinguishes planned improvements from current features.</footer>
+</body>
+</html>
