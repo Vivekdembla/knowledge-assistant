@@ -21,6 +21,14 @@ services:
       DATABASE_URL: postgresql+psycopg://knowledge:knowledge@postgres:5432/knowledge
       STORAGE_PATH: /app/storage/documents
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GMAIL_TOKEN_ENCRYPTION_KEY: ${GMAIL_TOKEN_ENCRYPTION_KEY:-}
+      GMAIL_REDIRECT_URI: ${GMAIL_REDIRECT_URI:-http://localhost:8000/api/gmail/callback}
+      GMAIL_WEB_REDIRECT_URL: ${GMAIL_WEB_REDIRECT_URL:-http://localhost:3000}
+      GMAIL_MOBILE_REDIRECT_URL: ${GMAIL_MOBILE_REDIRECT_URL:-personalbrief://gmail-connected}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-gemini-embedding-001}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
       GENERATION_MODEL: ${GENERATION_MODEL:-gemini-2.5-flash}

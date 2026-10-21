@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.core.auth import AuthenticatedUser, get_current_user
 from app.models.knowledge import Note, NoteChunk
 from app.services.embeddings import EmbeddingConfigurationError
 from app.services.note_embeddings import embed_note_chunks, embed_note_in_background
@@ -26,6 +27,7 @@ class NoteCreate(BaseModel):
 def create_note(
     request: NoteCreate,
     background_tasks: BackgroundTasks,
+    user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     title = request.title.strip()
@@ -35,7 +37,13 @@ def create_note(
             status_code=422, detail="Title and note content are required"
         )
 
-    note = Note(id=uuid.uuid4(), title=title, content=content, status="chunked")
+    note = Note(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        title=title,
+        content=content,
+        status="chunked",
+    )
     chunks = [
         NoteChunk(note_id=note.id, chunk_index=index, content=chunk_content)
         for _, index, chunk_content in chunk_pages([(1, content)])
@@ -64,12 +72,27 @@ def create_note(
 
 
 @router.get("")
-def list_notes(db: Session = Depends(get_db)):
-    return db.query(Note).order_by(Note.created_at.desc()).all()
+def list_notes(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(Note)
+        .filter(Note.user_id == user.id)
+        .order_by(Note.created_at.desc())
+        .all()
+    )
 
 
 @router.post("/{note_id}/embed")
-def retry_note_embedding(note_id: uuid.UUID, db: Session = Depends(get_db)):
+def retry_note_embedding(
+    note_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    note = db.query(Note.id).filter(Note.id == note_id, Note.user_id == user.id).first()
+    if note is None:
+        raise HTTPException(status_code=404, detail="Note not found")
     try:
         result = embed_note_chunks(db, note_id)
     except LookupError as error:

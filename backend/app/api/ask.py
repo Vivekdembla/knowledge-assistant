@@ -5,6 +5,7 @@ from google.genai.errors import APIError
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.auth import AuthenticatedUser, get_current_user
 from app.db.session import get_db
 from app.services.embeddings import EmbeddingConfigurationError
 from app.services.knowledge_qa import NoEmbeddedChunksError, answer_from_knowledge
@@ -19,9 +20,13 @@ class AskRequest(BaseModel):
 
 
 @router.post("/ask")
-def ask_knowledge(request: AskRequest, db: Session = Depends(get_db)):
+def ask_knowledge(
+    request: AskRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     try:
-        return answer_from_knowledge(db, request.query.strip(), request.top_k)
+        return answer_from_knowledge(db, request.query.strip(), user.id, request.top_k)
     except NoEmbeddedChunksError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except EmbeddingConfigurationError as error:

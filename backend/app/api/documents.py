@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.auth import AuthenticatedUser, get_current_user
 from app.db.session import get_db
 from app.models.knowledge import Document, DocumentChunk, DocumentStatus
 from app.services.document_embeddings import (
@@ -34,6 +35,7 @@ MAX_BYTES = settings.max_upload_size_mb * 1024 * 1024
 def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if file.content_type != "application/pdf":
@@ -55,6 +57,7 @@ def upload_document(
             output.write(block)
     document = Document(
         id=document_id,
+        user_id=user.id,
         name=file.filename or "Untitled PDF",
         storage_path=str(destination),
         mime_type=file.content_type,
@@ -101,13 +104,29 @@ def upload_document(
 
 
 @router.get("")
-def list_documents(db: Session = Depends(get_db)):
-    return db.query(Document).order_by(Document.created_at.desc()).all()
+def list_documents(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(Document)
+        .filter(Document.user_id == user.id)
+        .order_by(Document.created_at.desc())
+        .all()
+    )
 
 
 @router.post("/{document_id}/embed")
-def embed_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
-    document = db.get(Document, document_id)
+def embed_document(
+    document_id: uuid.UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    document = (
+        db.query(Document)
+        .filter(Document.id == document_id, Document.user_id == user.id)
+        .first()
+    )
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 

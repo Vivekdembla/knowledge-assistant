@@ -1,6 +1,8 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { apiFetch, supabase } from "@/lib/supabase";
 
 type DocumentRecord = {
   id: string;
@@ -19,12 +21,16 @@ type DocumentRecord = {
 
 type Citation = {
   label: string;
-  source_type: "document" | "note";
+  source_type: "document" | "note" | "email";
   source_name: string;
   document_id: string | null;
   document_name: string | null;
   note_id: string | null;
   note_title: string | null;
+  email_id?: string | null;
+  email_subject?: string | null;
+  email_sender?: string | null;
+  email_received_at?: string | null;
   chunk_id: string;
   page_number: number | null;
   chunk_index: number;
@@ -43,6 +49,21 @@ type NoteRecord = {
 type AskResult = {
   answer: string;
   citations: Citation[];
+};
+
+type GmailStatus = {
+  connected: boolean;
+  email_address: string | null;
+  synced_messages: number;
+  last_synced_at?: string | null;
+};
+
+type DailyBrief = {
+  id: string;
+  title: string;
+  summary: string;
+  citations: Citation[];
+  created_at: string | null;
 };
 
 const sampleDocuments = [
@@ -76,6 +97,13 @@ const suggestions = [
 ];
 
 export default function Home() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(!supabase);
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [query, setQuery] = useState("");
   const [activeSuggestion, setActiveSuggestion] = useState(0);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
@@ -88,11 +116,37 @@ export default function Home() {
   const [answer, setAnswer] = useState<AskResult | null>(null);
   const [askError, setAskError] = useState("");
   const [isAsking, setIsAsking] = useState(false);
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
+  const [gmailBusy, setGmailBusy] = useState(false);
+  const [gmailMessage, setGmailMessage] = useState("");
+  const [dailyBriefs, setDailyBriefs] = useState<DailyBrief[]>([]);
+  const [generatingBrief, setGeneratingBrief] = useState(false);
+  const [briefMessage, setBriefMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!supabase) return;
+
+    void supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (!nextSession) {
+        setDocuments([]);
+        setNotes([]);
+        setDailyBriefs([]);
+      }
+      setAuthReady(true);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
     let cancelled = false;
-    fetch("http://localhost:8000/api/documents")
+    apiFetch("http://localhost:8000/api/documents")
       .then((response) => {
         if (!response.ok) throw new Error("Could not load documents.");
         return response.json();
@@ -105,7 +159,7 @@ export default function Home() {
           setUploadMessage("Could not connect to the document service.");
         }
       });
-    fetch("http://localhost:8000/api/notes")
+    apiFetch("http://localhost:8000/api/notes")
       .then((response) => {
         if (!response.ok) throw new Error("Could not load notes.");
         return response.json();
@@ -119,9 +173,80 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [session]);
 
   useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    apiFetch("http://localhost:8000/api/briefs?limit=10")
+      .then((response) => {
+        if (!response.ok) throw new Error("Could not load briefing history.");
+        return response.json();
+      })
+      .then((records: DailyBrief[]) => {
+        if (!cancelled) setDailyBriefs(records);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setBriefMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not load briefing history.",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    apiFetch("http://localhost:8000/api/gmail/status")
+      .then((response) => {
+        if (!response.ok) throw new Error("Could not load Gmail status.");
+        return response.json();
+      })
+      .then((result: GmailStatus) => {
+        if (!cancelled) setGmailStatus(result);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled)
+          setGmailMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not load Gmail status.",
+          );
+      });
+
+    const params = new URLSearchParams(window.location.search);
+    const gmailResult = params.get("gmail");
+    const gmailError =
+      params.get("gmail_error") ??
+      (gmailResult?.startsWith("error=") ? gmailResult.slice(6) : null);
+    const timer = setTimeout(() => {
+      if (gmailResult === "connected")
+        setGmailMessage("Gmail connected. Sync when you are ready.");
+      if (gmailError)
+        setGmailMessage(
+          `Gmail connection did not finish (${gmailError.replaceAll("_", " ")}).`,
+        );
+    }, 0);
+    if (gmailResult || gmailError) {
+      params.delete("gmail");
+      params.delete("gmail_error");
+      const nextUrl = `${window.location.pathname}${params.size ? `?${params}` : ""}`;
+      window.history.replaceState({}, "", nextUrl);
+    }
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
     const hasActiveWork =
       documents.some((document) =>
         ["processing", "chunked", "embedding"].includes(document.status),
@@ -131,11 +256,11 @@ export default function Home() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch("http://localhost:8000/api/documents");
+        const response = await apiFetch("http://localhost:8000/api/documents");
         if (!response.ok) return;
         const records: DocumentRecord[] = await response.json();
         if (!cancelled) setDocuments(records);
-        const notesResponse = await fetch("http://localhost:8000/api/notes");
+        const notesResponse = await apiFetch("http://localhost:8000/api/notes");
         if (notesResponse.ok) {
           const noteRecords: NoteRecord[] = await notesResponse.json();
           if (!cancelled) setNotes(noteRecords);
@@ -151,7 +276,7 @@ export default function Home() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [documents, notes]);
+  }, [documents, notes, session]);
 
   async function uploadDocument(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -168,7 +293,7 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         "http://localhost:8000/api/documents/upload",
         {
           method: "POST",
@@ -198,7 +323,7 @@ export default function Home() {
     setAskError("");
     setAnswer(null);
     try {
-      const response = await fetch("http://localhost:8000/api/ask", {
+      const response = await apiFetch("http://localhost:8000/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: question, top_k: 6 }),
@@ -218,7 +343,7 @@ export default function Home() {
     setIsSavingNote(true);
     setUploadMessage("Saving note and preparing it for search...");
     try {
-      const response = await fetch("http://localhost:8000/api/notes", {
+      const response = await apiFetch("http://localhost:8000/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: noteTitle, content: noteContent }),
@@ -245,7 +370,231 @@ export default function Home() {
     fileInputRef.current?.click();
   }
 
+  async function authenticate() {
+    if (!supabase) {
+      setAuthMessage(
+        "Add the Supabase URL and public anon key to the web environment to enable login.",
+      );
+      return;
+    }
+    setIsAuthenticating(true);
+    setAuthMessage("");
+    const result =
+      authMode === "sign-up"
+        ? await supabase.auth.signUp({
+            email: authEmail.trim(),
+            password: authPassword,
+          })
+        : await supabase.auth.signInWithPassword({
+            email: authEmail.trim(),
+            password: authPassword,
+          });
+    setIsAuthenticating(false);
+    if (result.error) {
+      setAuthMessage(result.error.message);
+    } else if (authMode === "sign-up" && !result.data.session) {
+      setAuthMessage("Check your email to confirm your account, then sign in.");
+    }
+  }
+
+  async function signOut() {
+    const { error } = (await supabase?.auth.signOut()) ?? { error: null };
+    if (error) setUploadMessage(error.message);
+  }
+
+  async function connectGmail() {
+    setGmailBusy(true);
+    setGmailMessage("");
+    try {
+      const response = await apiFetch(
+        "http://localhost:8000/api/gmail/connect-url?client_type=web",
+        { method: "POST" },
+      );
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.detail || "Could not start Gmail connection.");
+      window.location.assign(result.authorization_url);
+    } catch (error) {
+      setGmailMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not start Gmail connection.",
+      );
+      setGmailBusy(false);
+    }
+  }
+
+  async function syncGmail() {
+    setGmailBusy(true);
+    setGmailMessage("Syncing up to 100 messages from the last 30 days...");
+    try {
+      const response = await apiFetch("http://localhost:8000/api/gmail/sync", {
+        method: "POST",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Gmail sync failed.");
+      setGmailMessage(
+        `Imported ${result.imported_messages} new messages. Embeddings are being prepared.`,
+      );
+      const statusResponse = await apiFetch(
+        "http://localhost:8000/api/gmail/status",
+      );
+      if (statusResponse.ok) setGmailStatus(await statusResponse.json());
+    } catch (error) {
+      setGmailMessage(
+        error instanceof Error ? error.message : "Gmail sync failed.",
+      );
+    } finally {
+      setGmailBusy(false);
+    }
+  }
+
+  async function disconnectGmail() {
+    setGmailBusy(true);
+    try {
+      const response = await apiFetch(
+        "http://localhost:8000/api/gmail/connection",
+        { method: "DELETE" },
+      );
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.detail || "Could not disconnect Gmail.");
+      }
+      setGmailStatus({
+        connected: false,
+        email_address: null,
+        synced_messages: 0,
+      });
+      setGmailMessage(
+        "Gmail disconnected. Imported email records were deleted.",
+      );
+    } catch (error) {
+      setGmailMessage(
+        error instanceof Error ? error.message : "Could not disconnect Gmail.",
+      );
+    } finally {
+      setGmailBusy(false);
+    }
+  }
+
+  async function generateDailyBrief() {
+    if (generatingBrief) return;
+    setGeneratingBrief(true);
+    setBriefMessage("");
+    try {
+      const response = await apiFetch(
+        "http://localhost:8000/api/briefs/daily",
+        {
+          method: "POST",
+        },
+      );
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.detail || "Could not generate a daily brief.");
+      setDailyBriefs((current) => [
+        result,
+        ...current.filter((brief) => brief.id !== result.id),
+      ]);
+    } catch (error) {
+      setBriefMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not generate a daily brief.",
+      );
+    } finally {
+      setGeneratingBrief(false);
+    }
+  }
+
   const visibleDocuments = documents.length > 0 ? documents : sampleDocuments;
+
+  if (!authReady || (supabase && !session)) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[var(--background)] px-6">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void authenticate();
+          }}
+          className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-7"
+        >
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-deep)]">
+            Knowledge OS
+          </p>
+          <h1 className="mb-2 text-3xl font-semibold">
+            {authMode === "sign-up" ? "Create your account" : "Welcome back"}
+          </h1>
+          <p className="mb-6 text-sm text-[var(--ink-muted)]">
+            Your notes and documents are private to your account.
+          </p>
+          <label className="mb-4 block text-sm font-medium">
+            Email
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={authEmail}
+              onChange={(event) => setAuthEmail(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 outline-none focus:border-[#718a42]"
+            />
+          </label>
+          <label className="mb-4 block text-sm font-medium">
+            Password
+            <input
+              type="password"
+              autoComplete={
+                authMode === "sign-up" ? "new-password" : "current-password"
+              }
+              minLength={8}
+              required
+              value={authPassword}
+              onChange={(event) => setAuthPassword(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2.5 outline-none focus:border-[#718a42]"
+            />
+          </label>
+          {authMessage || !supabase ? (
+            <p role="status" className="mb-4 text-sm text-[#8b3928]">
+              {authMessage ||
+                "Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable authentication."}
+            </p>
+          ) : null}
+          <button
+            disabled={!supabase || isAuthenticating}
+            className="w-full rounded-lg bg-[#17201b] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {isAuthenticating
+              ? "Please wait..."
+              : authMode === "sign-up"
+                ? "Create account"
+                : "Sign in"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode(authMode === "sign-up" ? "sign-in" : "sign-up");
+              setAuthMessage("");
+            }}
+            className="mt-4 w-full text-sm text-[var(--ink-muted)] underline underline-offset-4"
+          >
+            {authMode === "sign-up"
+              ? "Already have an account? Sign in"
+              : "New here? Create an account"}
+          </button>
+        </form>
+      </main>
+    );
+  }
+
+  if (!session) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[var(--background)] px-6">
+        <p className="max-w-md text-center text-sm text-[var(--ink-muted)]">
+          {authMessage ||
+            "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable login."}
+        </p>
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -257,7 +606,13 @@ export default function Home() {
           <span className="font-semibold tracking-tight">Knowledge OS</span>
         </div>
         <div className="flex items-center gap-4 text-sm text-[var(--ink-muted)]">
-          <span className="hidden sm:block">Local workspace</span>
+          <span className="hidden sm:block">{session.user.email}</span>
+          <button
+            onClick={() => void signOut()}
+            className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold hover:bg-white"
+          >
+            Sign out
+          </button>
           <div className="h-8 w-8 rounded-full bg-[#d3d9ce] text-center pt-1.5 text-xs font-bold">
             AM
           </div>
@@ -305,6 +660,84 @@ export default function Home() {
               + Add knowledge
             </button>
           </div>
+          <section className="mb-10 rounded-2xl border border-[#cbd8a7] bg-[#f8fbf0] p-6">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#58752c]">
+                  Your personal briefing
+                </p>
+                <h2 className="mt-1 text-xl font-semibold">
+                  What matters today?
+                </h2>
+                <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                  Summarize recent email alongside your saved notes and
+                  documents.
+                </p>
+              </div>
+              <button
+                onClick={() => void generateDailyBrief()}
+                disabled={generatingBrief}
+                className="rounded-full bg-[#17201b] px-5 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+              >
+                {generatingBrief
+                  ? "Preparing brief..."
+                  : "Generate daily brief"}
+              </button>
+            </div>
+            {briefMessage ? (
+              <p role="status" className="mt-3 text-sm text-[#8b3928]">
+                {briefMessage}
+              </p>
+            ) : null}
+            {dailyBriefs[0] ? (
+              <article className="mt-5 border-t border-[#dce5c5] pt-4">
+                <p className="mb-2 text-xs text-[var(--ink-muted)]">
+                  {dailyBriefs[0].created_at
+                    ? new Date(dailyBriefs[0].created_at).toLocaleString()
+                    : "Saved briefing"}
+                </p>
+                <p className="whitespace-pre-wrap text-sm leading-6">
+                  {dailyBriefs[0].summary}
+                </p>
+                {dailyBriefs[0].citations.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {dailyBriefs[0].citations.map((citation) => (
+                      <span
+                        key={citation.label}
+                        className="rounded-full border border-[#cbd8a7] bg-white px-3 py-1 text-xs text-[#526044]"
+                      >
+                        [{citation.label}] {citation.source_name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ) : null}
+            {dailyBriefs.length > 1 ? (
+              <details className="mt-4 border-t border-[#dce5c5] pt-3">
+                <summary className="cursor-pointer text-xs font-semibold text-[#526044]">
+                  Earlier briefings ({dailyBriefs.length - 1})
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {dailyBriefs.slice(1).map((brief) => (
+                    <article
+                      key={brief.id}
+                      className="border-t border-[#dce5c5] pt-3"
+                    >
+                      <p className="mb-1 text-xs text-[var(--ink-muted)]">
+                        {brief.created_at
+                          ? new Date(brief.created_at).toLocaleString()
+                          : brief.title}
+                      </p>
+                      <p className="whitespace-pre-wrap text-sm leading-6">
+                        {brief.summary}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </section>
           <div className="mb-10 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
             <div className="border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
               Ask your knowledge base
@@ -350,6 +783,65 @@ export default function Home() {
               </div>
             </div>
           </div>
+          <section className="mb-10 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--ink-muted)]">
+                  Email source
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">
+                  {gmailStatus?.connected
+                    ? gmailStatus.email_address
+                    : "Connect Gmail"}
+                </h2>
+                <p className="mt-1 text-xs text-[var(--ink-muted)]">
+                  Read-only access. Sync imports up to 100 messages from the
+                  last 30 days.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {gmailStatus?.connected ? (
+                  <>
+                    <button
+                      disabled={gmailBusy}
+                      onClick={() => void syncGmail()}
+                      className="rounded-full bg-[#17201b] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                    >
+                      {gmailBusy ? "Working..." : "Sync mail"}
+                    </button>
+                    <button
+                      disabled={gmailBusy}
+                      onClick={() => void disconnectGmail()}
+                      className="rounded-full border border-[var(--line)] px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                    >
+                      Disconnect
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    disabled={gmailBusy}
+                    onClick={() => void connectGmail()}
+                    className="rounded-full bg-[#17201b] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {gmailBusy ? "Opening Google..." : "Connect Gmail"}
+                  </button>
+                )}
+              </div>
+            </div>
+            {gmailStatus?.connected ? (
+              <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                {gmailStatus.synced_messages} messages indexed
+                {gmailStatus.last_synced_at
+                  ? ` · last sync ${new Date(gmailStatus.last_synced_at).toLocaleString()}`
+                  : ""}
+              </p>
+            ) : null}
+            {gmailMessage ? (
+              <p role="status" className="mt-3 text-xs text-[var(--ink-muted)]">
+                {gmailMessage}
+              </p>
+            ) : null}
+          </section>
           {(answer || askError) && (
             <section
               aria-live="polite"
@@ -379,7 +871,9 @@ export default function Home() {
                             [{citation.label}] {citation.source_name}
                             {citation.source_type === "document"
                               ? ` · page ${citation.page_number}`
-                              : " · note"}
+                              : citation.source_type === "email"
+                                ? ` · email from ${citation.email_sender || "unknown sender"}${citation.email_received_at ? ` · ${new Date(citation.email_received_at).toLocaleDateString()}` : ""}`
+                                : " · note"}
                             {` · chunk ${citation.chunk_index}`}
                           </p>
                           <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">
