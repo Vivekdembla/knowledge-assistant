@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -12,9 +14,11 @@ from app.db.session import Base, engine
 from app.models import knowledge
 
 app = FastAPI(title="Knowledge OS API", version="0.1.0")
+logger = logging.getLogger(__name__)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins.split(","),
+    allow_origins=settings.cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -28,8 +32,14 @@ app.include_router(briefs_router, prefix="/api")
 
 @app.on_event("startup")
 def create_tables() -> None:
-    with engine.begin() as connection:
-        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    except Exception:
+        logger.warning(
+            "Could not create the pgvector extension automatically. "
+            "Enable the vector extension in your database dashboard."
+        )
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
         connection.execute(

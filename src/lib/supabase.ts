@@ -8,6 +8,13 @@ export const supabase =
     ? createClient(supabaseUrl, supabaseAnonKey)
     : null;
 
+export function apiUrl(path: string): string {
+  const base = (
+    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+  ).replace(/\/$/, "");
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export async function apiFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},

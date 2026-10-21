@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { apiFetch, supabase } from "@/lib/supabase";
+import { apiFetch, apiUrl, supabase } from "@/lib/supabase";
 
 type DocumentRecord = {
   id: string;
@@ -146,7 +146,7 @@ export default function Home() {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    apiFetch("http://localhost:8000/api/documents")
+    apiFetch(apiUrl("/api/documents"))
       .then((response) => {
         if (!response.ok) throw new Error("Could not load documents.");
         return response.json();
@@ -159,7 +159,7 @@ export default function Home() {
           setUploadMessage("Could not connect to the document service.");
         }
       });
-    apiFetch("http://localhost:8000/api/notes")
+    apiFetch(apiUrl("/api/notes"))
       .then((response) => {
         if (!response.ok) throw new Error("Could not load notes.");
         return response.json();
@@ -178,7 +178,7 @@ export default function Home() {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    apiFetch("http://localhost:8000/api/briefs?limit=10")
+    apiFetch(apiUrl("/api/briefs?limit=10"))
       .then((response) => {
         if (!response.ok) throw new Error("Could not load briefing history.");
         return response.json();
@@ -203,7 +203,7 @@ export default function Home() {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    apiFetch("http://localhost:8000/api/gmail/status")
+    apiFetch(apiUrl("/api/gmail/status"))
       .then((response) => {
         if (!response.ok) throw new Error("Could not load Gmail status.");
         return response.json();
@@ -256,11 +256,11 @@ export default function Home() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const response = await apiFetch("http://localhost:8000/api/documents");
+        const response = await apiFetch(apiUrl("/api/documents"));
         if (!response.ok) return;
         const records: DocumentRecord[] = await response.json();
         if (!cancelled) setDocuments(records);
-        const notesResponse = await apiFetch("http://localhost:8000/api/notes");
+        const notesResponse = await apiFetch(apiUrl("/api/notes"));
         if (notesResponse.ok) {
           const noteRecords: NoteRecord[] = await notesResponse.json();
           if (!cancelled) setNotes(noteRecords);
@@ -294,7 +294,7 @@ export default function Home() {
 
     try {
       const response = await apiFetch(
-        "http://localhost:8000/api/documents/upload",
+        apiUrl("/api/documents/upload"),
         {
           method: "POST",
           body: formData,
@@ -323,7 +323,7 @@ export default function Home() {
     setAskError("");
     setAnswer(null);
     try {
-      const response = await apiFetch("http://localhost:8000/api/ask", {
+      const response = await apiFetch(apiUrl("/api/ask"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: question, top_k: 6 }),
@@ -343,7 +343,7 @@ export default function Home() {
     setIsSavingNote(true);
     setUploadMessage("Saving note and preparing it for search...");
     try {
-      const response = await apiFetch("http://localhost:8000/api/notes", {
+      const response = await apiFetch(apiUrl("/api/notes"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: noteTitle, content: noteContent }),
@@ -407,7 +407,7 @@ export default function Home() {
     setGmailMessage("");
     try {
       const response = await apiFetch(
-        "http://localhost:8000/api/gmail/connect-url?client_type=web",
+        apiUrl("/api/gmail/connect-url?client_type=web"),
         { method: "POST" },
       );
       const result = await response.json();
@@ -428,7 +428,7 @@ export default function Home() {
     setGmailBusy(true);
     setGmailMessage("Syncing up to 100 messages from the last 30 days...");
     try {
-      const response = await apiFetch("http://localhost:8000/api/gmail/sync", {
+      const response = await apiFetch(apiUrl("/api/gmail/sync"), {
         method: "POST",
       });
       const result = await response.json();
@@ -437,7 +437,7 @@ export default function Home() {
         `Imported ${result.imported_messages} new messages. Embeddings are being prepared.`,
       );
       const statusResponse = await apiFetch(
-        "http://localhost:8000/api/gmail/status",
+        apiUrl("/api/gmail/status"),
       );
       if (statusResponse.ok) setGmailStatus(await statusResponse.json());
     } catch (error) {
@@ -453,7 +453,7 @@ export default function Home() {
     setGmailBusy(true);
     try {
       const response = await apiFetch(
-        "http://localhost:8000/api/gmail/connection",
+        apiUrl("/api/gmail/connection"),
         { method: "DELETE" },
       );
       if (!response.ok) {
@@ -483,7 +483,7 @@ export default function Home() {
     setBriefMessage("");
     try {
       const response = await apiFetch(
-        "http://localhost:8000/api/briefs/daily",
+        apiUrl("/api/briefs/daily"),
         {
           method: "POST",
         },

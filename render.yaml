@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: knowledge-os-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: STORAGE_PATH
+        value: /tmp/documents
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: ALLOWED_ORIGINS
+        value: https://knowledge-assistant-9dk5.vercel.app
+      - key: GMAIL_WEB_REDIRECT_URL
+        value: https://knowledge-assistant-9dk5.vercel.app
